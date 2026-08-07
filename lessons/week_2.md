@@ -54,6 +54,27 @@ A drive has 400 cylinders, 15 tracks/cylinder, 40 sectors/track, 512 bytes/secto
 
 **Why this matters practically (and shows up as a concept question, not just a calculation):** the textbook notes that shortening seek time (by keeping data in contiguous areas — i.e., avoiding fragmentation) is one of the most effective ways to reduce total access time, since seek time tends to dominate. This is the _literal hardware reason_ database engineers care about sequential vs. random disk access, and why B-tree indexes are designed to minimize the number of separate disk seeks.
 
+### 3a. The four-term version, and a unit-conversion trap (newly added — matches the real exam's exact style)
+
+Real exam questions often add a fourth component: **controller overhead** — fixed processing delay from the disk controller itself, separate from the physical seek/rotation/transfer.
+
+**Access time = average seek time + controller overhead + rotational latency + data transfer time**
+
+**Worked example (exam-style, with a real unit-conversion trap built in):** an HDD has average seek time 5 ms, rotation speed 6,000 RPM, transfer rate 1 MB/s, controller overhead 0.1 ms. What is the average access time to transfer 16 kB of data? _(Use 1 MB = 1,024 kB — this exact conversion factor is stated explicitly because 1,000 vs. 1,024 changes the answer, and the exam wants to see if you use the one it gave you.)_
+
+1. **Seek time** = 5 ms (given directly).
+2. **Controller overhead** = 0.1 ms (given directly).
+3. **Rotational latency:** time for 1 full rotation = 60,000 ms ÷ 6,000 rotations = 10 ms/rotation → average rotational latency = 10 ÷ 2 = **5 ms**.
+4. **Data transfer time:** transfer rate is given in MB/s, but the data is in kB — convert to consistent units first. 1 MB/s = 1,024 kB/s = 1.024 kB/ms. Transfer time = 16 kB ÷ 1.024 kB/ms = **15.625 ms**.
+5. **Total access time** = 5 + 0.1 + 5 + 15.625 = **25.725 ms**
+
+**The two traps this question is designed to catch:**
+
+- Forgetting the controller overhead term entirely (a common oversight if you've only memorized the classic 3-term formula).
+- Using 1 MB = 1,000 kB instead of the stated 1,024 kB, which silently shifts your transfer-time answer and therefore your final total — always use whatever conversion factor the question explicitly states, even if it conflicts with a "cleaner" real-world assumption.
+
+**Backend connection:** this multi-term overhead stacking is exactly why real-world I/O latency numbers (e.g., in a `EXPLAIN ANALYZE` query plan or an S3 request latency breakdown) are never just "one number" — they're always the sum of several distinct overhead sources, each with a different root cause and a different lever to pull if you want to reduce it.
+
 ### 4. Optical discs (lower priority, but appears occasionally)
 
 - **CD:** ~700 MB. **DVD single-layer:** 4.7 GB. **DVD dual-layer:** 8.5 GB.
@@ -64,9 +85,9 @@ A drive has 400 cylinders, 15 tracks/cylinder, 40 sectors/track, 512 bytes/secto
 ### Key Points
 
 - Capacity: build up sector → track → cylinder → drive.
-- Access time = seek time + rotational latency + transfer time.
+- Access time = seek time + rotational latency + transfer time (add controller overhead as a 4th term when the question gives one).
 - Average rotational latency = (time per full rotation) ÷ 2.
-- Data transfer rate = track capacity ÷ time per rotation.
+- Data transfer rate = track capacity ÷ time per rotation; watch for MB vs. kB (1,024 vs. 1,000) unit-conversion traps.
 - Reducing fragmentation shortens seek time, which usually dominates access time.
 
 ### Practice Questions
@@ -77,6 +98,20 @@ A drive has 400 cylinders, 15 tracks/cylinder, 40 sectors/track, 512 bytes/secto
 4. Using the answer from Q3, what is the average rotational latency?
 5. Why does reducing fragmentation improve average access time?
 6. Which typically has a longer average access time: magnetic disk or optical disc? Why?
+7. An HDD has average seek time 4 ms, controller overhead 0.2 ms, rotation speed 7,200 RPM, and transfer rate 2 MB/s. Using 1 MB = 1,024 kB, what is the average access time to transfer 8 kB? Show every step.
+
+### Official-Exam-Style Practice (matching real ITFE Subject A format/difficulty)
+
+**EP1.** An HDD has the specifications: average seek time 4 ms, rotation speed 7,200 RPM, transfer rate 2 MB/s, controller overhead 0.15 ms. What is the average access time to transfer 20 kB of data, in milliseconds? Here, 1 MB = 1,024 kB, and other overheads can be ignored.
+a) 9.30 b) 13.65 c) 18.08 d) 24.5
+
+**EP2.** Which of the following is an appropriate description concerning the storage capacity of a magnetic disk drive with multiple platters?
+a) A cylinder refers to the same-numbered track across all platter surfaces, accessible without moving the read/write arm.
+b) A sector is always larger than a track in terms of storage capacity.
+c) Increasing the number of platters always decreases total seek time.
+d) A track's capacity is calculated by multiplying the number of cylinders by the number of sectors.
+
+_(Answers: EP1 → c. seek=4ms; overhead=0.15ms; rotation time=60,000÷7,200=8.33ms→avg latency=4.17ms; transfer rate=2MB/s=2×1,024=2,048 kB/s=2.048 kB/ms→transfer time=20÷2.048=9.77ms; total=4+0.15+4.17+9.77≈18.08ms. EP2 → a.)_
 
 ### Day 8 Quiz
 
@@ -95,11 +130,14 @@ A) 400 bytes/ms B) 800 bytes/ms C) 8,000 bytes/ms D) 80 bytes/ms
 **Q5.** DVD-R is best classified as:
 A) read-only B) write-once C) rewritable D) magnetic storage
 
+**Q6 (exam-style, 4-term calculation).** An HDD has average seek time 5 ms, rotation speed 6,000 RPM, transfer rate 1 MB/s, controller overhead 0.1 ms. Using 1 MB = 1,024 kB, what is the average access time to transfer 16 kB?
+A) 20.1 ms B) 25.725 ms C) 30.725 ms D) 74.1 ms
+
 ---
 
-**Day 8 Answers:** Q1: B | Q2: B | Q3: D (60,000 ms ÷ 5,000 rotations = 12 ms) | Q4: B | Q5: B
+**Day 8 Answers:** Q1: B | Q2: B | Q3: D (60,000 ms ÷ 5,000 rotations = 12 ms) | Q4: B | Q5: B | Q6: B (worked in section 3a above: 5 + 0.1 + 5 + 15.625 = 25.725 ms)
 
-**Practice Answers:** 1) 256×50=12,800/track; ×10=128,000/cylinder; ×250=32,000,000 bytes ≈ 32 MB 2) seek time + rotational latency + data transfer time 3) 60,000÷7,200 = 8.33 ms 4) 8.33÷2 = 4.17 ms 5) less arm movement is needed when data sits in contiguous areas, so seek time (which tends to dominate access time) shrinks 6) optical disc, because the optical head is heavier than a magnetic head, making seek slower.
+**Practice Answers:** 1) 256×50=12,800/track; ×10=128,000/cylinder; ×250=32,000,000 bytes ≈ 32 MB 2) seek time + rotational latency + data transfer time 3) 60,000÷7,200 = 8.33 ms 4) 8.33÷2 = 4.17 ms 5) less arm movement is needed when data sits in contiguous areas, so seek time (which tends to dominate access time) shrinks 6) optical disc, because the optical head is heavier than a magnetic head, making seek slower 7) seek=4ms; overhead=0.2ms; rotation time=60,000÷7,200=8.33ms→avg latency=4.17ms; transfer rate=2MB/s=2×1,024=2,048 kB/s=2.048 kB/ms→transfer time=8÷2.048=3.91ms; total=4+0.2+4.17+3.91=**≈12.28 ms**.
 
 ---
 
@@ -126,6 +164,12 @@ This day is mostly vocabulary and classification — the exam likes matching dev
 - **Non-impact** (thermal, inkjet, laser): no physical striking — quieter, no carbon copies.
 - **Laser printer** performance is measured by **dpi** (dots per inch, resolution) and **ppm** (pages per minute, speed) — this pairing is a common exam matching question.
 - Color printing uses **CMY** (Cyan/Magenta/Yellow); real printers add **K** (black) → **CMYK**, because mixing CMY alone can't produce a true black.
+
+**1a. Modern/emerging output devices (newly added — these show up in recent exam sittings as distractor-heavy questions):**
+
+- **3D printer:** builds a genuinely three-dimensional physical object, typically layer by layer, using methods like **FFF/FDM (Fused Filament/Deposition Modeling)** — melting and extruding plastic filament layer by layer — or resin-curing/sintering methods. The key exam distinction: a 3D printer _makes_ physical 3D objects; it does not scan or detect them (that's a 3D scanner) and it doesn't project images onto surfaces (that's projection mapping, next).
+- **Projection mapping:** projects computer graphics onto irregular/uneven 3D surfaces (buildings, furniture, product displays) so the imagery appears to conform to the object's shape — this is a display/projection technique, not a fabrication technique, and it's a favorite wrong-answer pairing against 3D printers on the exam.
+- **3D scanner:** the reverse of a 3D printer — an _input_ device that detects the shape of a real-world three-dimensional object and produces 3D data output from it. If a question describes "detecting a shape and producing 3D data," that's a scanner (input), not a printer (output) — a very common exam trap.
 
 ### 2. I/O control methods — how data actually moves between a device and memory
 
@@ -167,6 +211,23 @@ This day is mostly vocabulary and classification — the exam likes matching dev
 4. Rank program control, DMA, and channel control from _most_ to _least_ CPU involvement.
 5. How many devices can a single SCSI chain support, and how are they identified?
 6. Name the three device connection topologies described above.
+7. What's the precise difference between a 3D printer, a 3D scanner, and projection mapping? (This is a very common exam mix-up.)
+
+### Official-Exam-Style Practice (matching real ITFE Subject A format/difficulty)
+
+**EP1.** Which of the following is an appropriate description of DMA (Direct Memory Access) control?
+a) The CPU directly executes every byte-level transfer between the I/O device and main memory.
+b) A dedicated DMA controller transfers data directly between the I/O device and main memory, and the CPU is only involved at the start and end of the transfer.
+c) An independent I/O processor runs its own program entirely separately from the CPU, used mainly in mainframes.
+d) The I/O device communicates only through a channel program, bypassing main memory entirely.
+
+**EP2.** Which of the following is the most appropriate explanation of a 3D printer's function?
+a) It detects the shape of three-dimensional objects and produces output of 3D data.
+b) It functions by pushing the pins of a high-temperature printing head onto heat-sensitive paper.
+c) It makes three-dimensional objects using methods such as fused filament fabrication.
+d) It projects computer graphics onto uneven three-dimensional objects such as buildings and furniture.
+
+_(Answers: EP1 → b — this is the definition of DMA specifically; (a) describes program control, (c) describes channel control. EP2 → c — (a) describes a 3D scanner, (d) describes projection mapping; this exact question format appeared on a real ITPEC sitting.)_
 
 ### Day 9 Quiz
 
@@ -185,10 +246,13 @@ A) 5 B) 7 C) 8 D) 127
 **Q5.** The connection topology where devices connect one after another in a single line is called:
 A) star B) cascade C) daisy chain D) mesh
 
+**Q6 (exam-style).** Which of the following correctly describes a 3D printer's function?
+A) It detects the shape of three-dimensional objects and outputs 3D data B) It projects computer graphics onto uneven three-dimensional surfaces C) It makes three-dimensional objects using methods such as fused filament fabrication D) It reads magnetic stripes to identify physical objects
+
 ---
 
-**Day 9 Answers:** Q1: C | Q2: B | Q3: C | Q4: B | Q5: C
-**Practice Answers:** 1) OLED 2) dpi (resolution) and ppm (speed) 3) mixing cyan, magenta, and yellow cannot produce a true, deep black 4) most CPU involvement: program control > DMA > channel control (least) 5) 7 devices, each assigned a unique SCSI ID 0–7 6) star, cascade (tree), and daisy chain.
+**Day 9 Answers:** Q1: C | Q2: B | Q3: C | Q4: B | Q5: C | Q6: C
+**Practice Answers:** 1) OLED 2) dpi (resolution) and ppm (speed) 3) mixing cyan, magenta, and yellow cannot produce a true, deep black 4) most CPU involvement: program control > DMA > channel control (least) 5) 7 devices, each assigned a unique SCSI ID 0–7 6) star, cascade (tree), and daisy chain 7) a 3D printer is an _output_ device that fabricates a physical 3D object (e.g., via FFF/FDM layer-by-layer extrusion); a 3D scanner is an _input_ device that detects an existing physical object's shape and produces 3D data from it; projection mapping _displays_ computer graphics onto the surface of an existing uneven 3D object rather than fabricating or scanning anything.
 
 ---
 
@@ -247,9 +311,15 @@ A) needs more circuitry B) allows subtraction via addition and has only one zero
 **Q15.** RISC architecture is generally more suitable than CISC for pipelining because:
 A) RISC instructions have a more uniform, fixed length and execution time B) RISC uses microprograms C) CISC has fewer instructions D) RISC doesn't use registers
 
+**Q16 (official-exam-style).** Let n be a binary integer in two's complement. Which operation computes `9 × n` using only bit shifting and one addition?
+A) Shift n left 2 bits, then add n B) Shift n left 3 bits, then add n C) Shift n left 3 bits, then subtract n D) Shift n left 4 bits, then add n
+
+**Q17 (official-exam-style).** An HDD has average seek time 3 ms, controller overhead 0.1 ms, rotation speed 6,000 RPM, and transfer rate 4 MB/s. Using 1 MB = 1,024 kB, what is the average access time to transfer 4 kB, in milliseconds?
+A) 4.08 B) 6.08 C) 9.08 D) 13.08
+
 ---
 
-**Answers:** Q1: B | Q2: B | Q3: A | Q4: B | Q5: B | Q6: C | Q7: B | Q8: B | Q9: A | Q10: B | Q11: C | Q12: B | Q13: B | Q14: B | Q15: A
+**Answers:** Q1: B | Q2: B | Q3: A | Q4: B | Q5: B | Q6: C | Q7: B | Q8: B | Q9: A | Q10: B | Q11: C | Q12: B | Q13: B | Q14: B | Q15: A | Q16: B (9=8+1=2³+1, so shift left 3 bits then add n) | Q17: C (seek=3ms, overhead=0.1ms, rotation time=60,000÷6,000=10ms→avg latency=5ms, transfer rate=4MB/s=4×1,024=4,096 kB/s=4.096 kB/ms→transfer time=4÷4.096≈0.98ms; total=3+0.1+5+0.98≈9.08ms)
 
 ### Self-scoring
 
@@ -335,6 +405,22 @@ This is the exact ACID you know from `BEGIN; ... COMMIT;` in SQL — the exam ju
 4. What's the main drawback of a two-tier client/server system that three-tier solves?
 5. Name three types of servers found in a client/server system.
 6. Which processing type — P2P or client/server — is "vertical distributed"?
+
+### Official-Exam-Style Practice (matching real ITFE Subject A format/difficulty)
+
+**EP1.** In the context of transaction management, which of the following is a condition that the Isolation property ensures?
+a) Data is written permanently after a transaction commits.
+b) Only valid data is written to the database, with no contradictions.
+c) Transactions are either fully completed or fully revoked.
+d) Transactions are executed without affecting each other, even when running concurrently.
+
+**EP2.** Which of the following is an appropriate description of a distributed database system?
+a) Access to a single central database server is shared among a globally distributed userbase.
+b) A database's data is made freely available to researchers worldwide.
+c) A NoSQL database is used instead of a relational DBMS.
+d) Different parts of a database are stored in different physical locations, and processing is distributed across those parts.
+
+_(Answers: EP1 → d — this is the precise definition of Isolation; (a) describes Durability, (b) describes Consistency, (c) describes Atomicity. EP2 → d — a distributed database's defining trait is that the data itself, not just access to it, is physically spread across multiple locations, with query processing spread across those same locations.)_
 
 ### Day 11 Quiz
 
@@ -434,6 +520,16 @@ This day formalizes redundancy patterns you've likely designed around intuitivel
 5. Why does RAID 5 avoid the parity-disk bottleneck that RAID 4 has?
 6. Which RAID level can survive two simultaneous disk failures?
 
+### Official-Exam-Style Practice (matching real ITFE Subject A format/difficulty)
+
+**EP1.** Which of the following is the computer system where one computer is in the standby state while the other computer operates normally?
+a) Dual system b) Duplex system c) Multiprocessor system d) Load sharing system
+
+**EP2.** Which of the following is a component of a fault tolerant system?
+a) RAID 0 b) Duplexing of a hard disk c) Scheduled backup d) Data encryption
+
+_(Answers: EP1 → b — this is the textbook definition of a duplex system, worded exactly as it commonly appears on the real exam; a dual system runs both computers simultaneously on the same processing, not one active/one standby. EP2 → b — mirroring/duplexing a hard disk provides hardware redundancy so the system keeps functioning through a single disk failure; RAID 0 (striping only) has *no* redundancy, and scheduled backup/encryption serve different purposes (recovery and confidentiality, not fault tolerance during live operation).)_
+
 ### Day 12 Quiz
 
 **Q1.** A system with a primary active unit and a passive backup unit that takes over on failure is called:
@@ -480,6 +576,24 @@ This is the single highest-yield calculation-heavy day in Chapter 2. These formu
   **Important system-level nuance:** if several servers work together, the overall system throughput is capped by the _slowest_ one in the chain — the same "bottleneck" logic you already apply when profiling a pipeline.
 
 - **Capacity planning** (4 steps, know the order): 1) collect workload data (especially peak load) → 2) determine performance requirements → 3) sizing (estimate needed hardware/software) → 4) evaluate and tune, repeating even after go-live.
+
+**1a. Average turnaround time under FCFS scheduling (newly added — a real, guaranteed-style exam calculation).** When multiple jobs/processes arrive at (essentially) the same time and are run strictly one after another under **FCFS (First-Come-First-Served)**, each job's _individual_ turnaround time = the sum of every job's running time _up to and including its own_, since it has to wait for everyone ahead of it to finish first. The **average** turnaround time is the mean of all those individual turnaround times.
+
+_Worked example:_ 5 processes A, B, C, D, E arrive together in that order, with running times 10, 6, 2, 8, 4 ms respectively. Find the average turnaround time under FCFS.
+
+Since FCFS runs them strictly in arrival order (A, then B, then C, then D, then E), each process's turnaround time is the cumulative sum of running times up to that point:
+
+| Process | Running time | Turnaround time (cumulative) |
+| ------- | ------------ | ---------------------------- |
+| A       | 10           | 10                           |
+| B       | 6            | 10+6 = 16                    |
+| C       | 2            | 16+2 = 18                    |
+| D       | 8            | 18+8 = 26                    |
+| E       | 4            | 26+4 = 30                    |
+
+Average turnaround time = (10+16+18+26+30) ÷ 5 = 100 ÷ 5 = **20 ms**
+
+**Why this matters conceptually (not just the arithmetic):** notice that C, which only needed 2 ms of work, still had to wait 18 ms total simply because it arrived third — this is exactly the head-of-line-blocking weakness of FCFS mentioned back on your OS scheduling material: a short job stuck behind long ones suffers a disproportionately bad turnaround time, purely due to arrival order rather than its own size. This is precisely why real schedulers (and real-world queueing systems you might design) often favor shorter jobs first, or at least avoid pure FCFS when job sizes vary widely.
 
 ### 2. CPU performance indicators
 
@@ -532,6 +646,26 @@ Worked example: two devices in parallel, availability 0.9 and 0.85.
 
 **Series/parallel mixed systems:** solve piece by piece — compute the availability of each parallel sub-block first, then multiply those sub-block availabilities together as if they were a series chain.
 
+**4a. Worked example: a real multi-group system (newly added — this exact pattern is a proven exam favorite).** A system has 1 server (availability _a_), 3 clients (each availability _b_), and 2 printers (each availability _c_), all connected via one LAN. The system is considered "up" if the server works AND at least 1 of the 3 clients works AND at least 1 of the 2 printers works. What is the overall system availability?
+
+Break it into three independent blocks, then chain them as a series system (since _all three conditions_ — server up, at least one client up, at least one printer up — must simultaneously hold):
+
+1. **Server block:** a single component, not redundant → availability = **a**
+2. **Client block:** 3 identical devices in parallel, "at least 1 of 3 must work" → using the parallel-availability idea from rule 17, generalized to n identical devices: `availability = 1 − (1 − b)ⁿ` → for 3 clients: **1 − (1−b)³**
+3. **Printer block:** 2 identical devices in parallel, "at least 1 of 2 must work" → **1 − (1−c)²**
+
+Since the whole system needs _all three blocks_ to be up simultaneously (server AND at-least-one-client AND at-least-one-printer), multiply the three block availabilities together as a series chain:
+
+**System availability = a × (1 − (1−b)³) × (1 − (1−c)²)**
+
+_Plug in numbers to sanity-check the shape of the answer:_ if a=0.99, b=0.9, c=0.8:
+
+- Client block: 1 − (0.1)³ = 1 − 0.001 = 0.999
+- Printer block: 1 − (0.2)² = 1 − 0.04 = 0.96
+- System = 0.99 × 0.999 × 0.96 ≈ **0.9505**
+
+**The general pattern to internalize:** "at least 1 of n identical parallel devices must work" always generalizes to `1 − (1 − individual availability)ⁿ` — this is just the 2-device parallel formula (rule 17) extended to n devices, since "at least one works" is the complement of "every single one fails simultaneously," and "every one fails" has probability `(1−A)ⁿ` when all n devices are independent and identical. Once you can build that one sub-formula, any system diagram — no matter how many device _groups_ it has — reduces to: identify each independent redundant group, apply `1−(1−p)ⁿ` to each, then multiply every group's result together in series.
+
 **Failure rate:** `Failure rate = 1 ÷ MTBF`. For a system built of many components, `System failure rate = Σ (failure rate of each component)`, and you then invert the sum to get system MTBF.
 
 **Bathtub curve** (shape of failure rate over a device's life, memorize the three phases in order): **early failure period** (manufacturing defects surface early) → **random failure period** (low, roughly constant failure rate — normal operating life) → **wear-out failure period** (rising failure rate as components age past their useful life).
@@ -550,6 +684,8 @@ Worked example: two devices in parallel, availability 0.9 and 0.85.
 - Failure rate = 1/MTBF; system failure rate = sum of component failure rates.
 - Bathtub curve: early failure → random failure → wear-out failure.
 - TCO = initial cost + operational cost.
+- FCFS average turnaround time: each job's turnaround = cumulative running time of every job up to and including itself, in arrival order; average those.
+- "At least 1 of n identical parallel devices" generalizes to `1 − (1 − p)ⁿ`; chain multiple independent device groups (server, client pool, printer pool, etc.) together as a series system by multiplying each group's availability.
 
 ### Practice Questions
 
@@ -560,6 +696,25 @@ Worked example: two devices in parallel, availability 0.9 and 0.85.
 5. What does RASIS stand for?
 6. Name the three phases of the bathtub curve, in order.
 7. A CPU runs at 1 GHz with an average CPI of 2. What is its MIPS rating?
+8. Four processes arrive together in order P1, P2, P3, P4 with running times 5, 3, 9, 2 ms. Find the average turnaround time under FCFS.
+9. A system needs its 1 server (availability 0.95) up, AND at least 1 of 4 identical routers (each availability 0.8) up, to be considered available. Write the expression for system availability and compute it.
+
+### Official-Exam-Style Practice (matching real ITFE Subject A format/difficulty)
+
+**EP1.** In a processor with a clock cycle time of 2 nanoseconds, the number of clocks needed for each instruction type and its occurrence rate are shown below. What is the approximate performance of this processor in MIPS?
+
+| Type of instruction               | Clocks needed | Occurrence rate |
+| --------------------------------- | ------------- | --------------- |
+| Register-to-register operation    | 3             | 40%             |
+| Register-to/from-memory operation | 5             | 40%             |
+| Unconditional branch              | 9             | 20%             |
+
+a) 50 b) 100 c) 200 d) 250
+
+**EP2.** One server, three clients, and two printers are connected via a LAN. The system prints data located on the server in response to client instructions. The system is considered available if the server is up, at least 1 of the 3 clients is up, and at least 1 of the 2 printers is up. Given availability values: server = a, client = b, printer = c, which of the following is the expression for overall system availability?
+a) a·b³·c² b) a·(1−b³)·(1−c²) c) a·(1−(1−b)³)·(1−(1−c)²) d) a·(1−(1−b))³·(1−(1−c))²
+
+_(Answers: EP1 → b) 100. Average clocks/instruction = (3×0.4)+(5×0.4)+(9×0.2) = 1.2+2.0+1.8 = 5.0 clocks exactly. Average instruction time = 5.0 × 2ns = 10ns = 0.01µs. MIPS = 1÷0.01 = 100. EP2 → c, using the same "1 − (1−p)ⁿ per group, then multiply groups in series" pattern from section 4a.)_
 
 ### Day 13 Quiz
 
@@ -584,10 +739,16 @@ A) 50 MIPS B) 100 MIPS C) 200 MIPS D) 500 MIPS
 **Q7.** TCO includes:
 A) only hardware purchase cost B) only operational cost C) both initial cost and operational cost D) only software development cost
 
+**Q8 (exam-style, FCFS turnaround).** Processes A, B, C arrive together in that order with running times 6, 3, 9 ms. The average turnaround time under FCFS is:
+A) 6 ms B) 9 ms C) 11 ms D) 18 ms
+
+**Q9 (exam-style, multi-group availability).** A system requires its server (availability a) AND at least 1 of 3 identical clients (each availability b) AND at least 1 of 2 identical printers (each availability c) to be up. The correct expression for system availability is:
+A) a·b³·c² B) a·(1−b³)·(1−c²) C) a·(1−(1−b))³·(1−(1−c))² D) a·(1−(1−b)³)·(1−(1−c)²)
+
 ---
 
-**Day 13 Answers:** Q1: B | Q2: B | Q3: B (0.9×0.85=0.765) | Q4: C (1−(0.4×0.5)=1−0.2=0.8) | Q5: B | Q6: B (clock cycle=1/500,000,000=2ns; avg instr time=5×2=10ns=0.01µs; MIPS=1/0.01=100) | Q7: C
-**Practice Answers:** 1) Availability = MTBF ÷ (MTBF + MTTR) 2) MTBF=540/3=180h, MTTR=60/3=20h, Availability=180/(180+20)=0.9 3) 0.98×0.92=0.9016 4) 1−(0.2×0.3)=1−0.06=0.94 5) Reliability, Availability, Serviceability, Integrity, Security 6) early failure period → random failure period → wear-out failure period 7) clock cycle time=1/1,000,000,000=1ns; avg instruction time=2×1=2ns=0.002µs; MIPS=1/0.002=500 MIPS.
+**Day 13 Answers:** Q1: B | Q2: B | Q3: B (0.9×0.85=0.765) | Q4: C (1−(0.4×0.5)=1−0.2=0.8) | Q5: B | Q6: B (clock cycle=1/500,000,000=2ns; avg instr time=5×2=10ns=0.01µs; MIPS=1/0.01=100) | Q7: C | Q8: C (turnarounds: A=6, B=6+3=9, C=9+9=18; average=(6+9+18)/3=33/3=11 ms) | Q9: D
+**Practice Answers:** 1) Availability = MTBF ÷ (MTBF + MTTR) 2) MTBF=540/3=180h, MTTR=60/3=20h, Availability=180/(180+20)=0.9 3) 0.98×0.92=0.9016 4) 1−(0.2×0.3)=1−0.06=0.94 5) Reliability, Availability, Serviceability, Integrity, Security 6) early failure period → random failure period → wear-out failure period 7) clock cycle time=1/1,000,000,000=1ns; avg instruction time=2×1=2ns=0.002µs; MIPS=1/0.002=500 MIPS 8) turnarounds: P1=5, P2=5+3=8, P3=8+9=17, P4=17+2=19; average=(5+8+17+19)/4=49/4=12.25 ms 9) availability = a × (1−(1−b)⁴); with a=0.95, b=0.8: 1−(0.2)⁴=1−0.0016=0.9984; system=0.95×0.9984≈**0.9485**.
 
 ---
 
@@ -640,6 +801,19 @@ _This subsection is intentionally light — the textbook treats it more conceptu
 - **Ray-tracing:** traces light rays backward from the eye to render realistic images.
 - **Shading:** adds shadow/depth cues for a sense of solidity.
 - **Morphing:** smoothly transforms one image into another.
+
+### Official-Exam-Style Practice (matching real ITFE Subject A format/difficulty)
+
+**EP1.** Which of the following is a method used to improve the appearance of a jagged edge of a slanted line so that it appears smooth on a screen, such as that of an LCD?
+a) Anti-aliasing b) Bump mapping c) Shading d) Texture mapping
+
+**EP2.** Which of the following is an appropriate description of the GUI component commonly known as a "radio button"?
+a) A component that allows the user to select exactly one option from a mutually exclusive set of choices.
+b) A component that allows the user to select any number of options independently, including zero or all of them.
+c) A component that opens a list of choices only when clicked, collapsing again after selection.
+d) A component used exclusively to trigger an immediate action, such as submitting a form.
+
+_(Answers: EP1 → a, matching the real exam's exact phrasing on this topic. EP2 → a — a radio button group enforces mutual exclusivity (only one selected at a time); (b) describes a checkbox, (c) describes a dropdown/combo box, (d) describes a push button. Mixing these GUI-component definitions up is a common exam trap worth double-checking.)_
 
 ### 3. Week 2 Full Review Quiz (12 questions)
 
